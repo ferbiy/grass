@@ -195,6 +195,9 @@ if __name__ == "__main__":
             interface.start_ui()
 
     bot_info("GRASS_AUTO")
-    loop = asyncio.ProactorEventLoop()
+    if sys.platform == 'win32':
+        loop = asyncio.WindowsSelectorEventLoop()
+    else:
+        loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(main())
