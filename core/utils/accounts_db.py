@@ -1,5 +1,6 @@
 import aiosqlite
 import asyncio
+from core.utils import logger
 
 class AccountsDB:
     def __init__(self, db_path):
@@ -151,4 +152,4 @@ class AccountsDB:
                     await self.cursor.execute("DELETE FROM ProxyList WHERE proxy = ?", (proxy,))
             
             await self.connection.commit()
-            logger.success("Unused proxies cleaned successfully")
+            print("Unused proxies cleaned successfully")
