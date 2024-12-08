@@ -1,6 +1,7 @@
 import asyncio
 import random
 import uuid
+import time
 from typing import List, Optional
 
 import aiohttp
@@ -163,16 +164,22 @@ class Grass(GrassWs, GrassRest, FailureCounter):
            wait=wait_random(5, 7),
            reraise=True)
     async def handle_proxy_score(self, min_score: int, browser_id: str):
-        if (proxy_score := await self.get_proxy_score_by_device_handler(browser_id)) is None:
-            # logger.info(f"{self.id} | Proxy score not found for {self.proxy}. Guess Bad proxies! Continue...")
-            # return None
-            raise ProxyScoreNotFoundException(f"{self.id} | Proxy score not found! Retrying...")
-        elif proxy_score >= min_score:
-            self.proxy_score = proxy_score
-            logger.success(f"{self.id} | Proxy score: {self.proxy_score}")
-            return True
-        else:
-            raise LowProxyScoreException(f"{self.id} | Too low proxy score: {proxy_score} for {self.proxy}. Retrying...")
+        start_time = time.time()
+        timeout = 300  # 5 minutes timeout
+        
+        while time.time() - start_time < timeout:
+            if (proxy_score := await self.get_proxy_score_by_device_handler(browser_id)) is None:
+                logger.info(f"{self.id} | Proxy score not found. Waiting 60 seconds before retry... Time elapsed: {int(time.time() - start_time)}s")
+                await asyncio.sleep(60)
+                continue
+            elif proxy_score >= min_score:
+                self.proxy_score = proxy_score
+                logger.success(f"{self.id} | Proxy score: {self.proxy_score}")
+                return True
+            else:
+                raise LowProxyScoreException(f"{self.id} | Too low proxy score: {proxy_score} for {self.proxy}. Retrying...")
+        
+        raise ProxyScoreNotFoundException(f"{self.id} | Proxy score not found after {timeout} seconds! Changing proxy...")
 
     async def change_proxy(self):
         self.proxy = await self.get_new_proxy()
