@@ -132,3 +132,23 @@ class AccountsDB:
 
     async def close_connection(self):
         await self.connection.close()
+
+    async def clean_unused_proxies(self):
+        async with self.db_lock:
+            # Get all proxies currently assigned to accounts
+            await self.cursor.execute("SELECT proxies FROM Accounts")
+            used_proxies = []
+            for row in await self.cursor.fetchall():
+                used_proxies.extend(row[0].split(',') if row[0] else [])
+            
+            # Get all proxies from ProxyList
+            await self.cursor.execute("SELECT proxy FROM ProxyList")
+            extra_proxies = [row[0] for row in await self.cursor.fetchall()]
+            
+            # Delete only those proxies that aren't used by any account
+            for proxy in extra_proxies:
+                if proxy not in used_proxies:
+                    await self.cursor.execute("DELETE FROM ProxyList WHERE proxy = ?", (proxy,))
+            
+            await self.connection.commit()
+            logger.success("Unused proxies cleaned successfully")
